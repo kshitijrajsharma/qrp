@@ -59,9 +59,9 @@ if s3_parquet_url:
             ),
             total_count AS (
                 SELECT
-                    COUNT(*) AS total
+                    sum(count) AS total
                 FROM
-                    unnested_data
+                    aggregated_data
             )
             SELECT
                 ad.dataset,
