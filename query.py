@@ -1,13 +1,16 @@
 import duckdb
 import streamlit as st
+from lonboard import Map, PolygonLayer, viz
 
 con = duckdb.connect()
+con.sql("install spatial")
+con.sql("load spatial")
 
 
 def load_parquet_data(s3_parquet_url):
     with st.spinner("Loading Parquet data..."):
         con.execute(
-            "CREATE OR REPLACE VIEW parquet_data AS SELECT * FROM parquet_scan('{}')".format(
+            "CREATE OR REPLACE VIEW parquet_data AS SELECT * exclude geometry , ST_GeomFromWKB(geometry) as geom ,  FROM parquet_scan('{}')".format(
                 s3_parquet_url
             )
         )
@@ -83,10 +86,15 @@ if s3_parquet_url:
         if query.strip():
             try:
                 with st.spinner("Running query..."):
-                    df = con.execute(query).df()
+                    sql = con.sql(query)
+                    df = sql.df()
+
                 st.dataframe(df)
+                with st.spinner("Visualizing query..."):
+                    st.components.v1.html(viz(sql, con=con).to_html(), height=500)
             except Exception as ex:
                 st.error(ex)
+                raise ex
         else:
             st.warning("Please enter a valid SQL query.")
 else:
