@@ -13,10 +13,22 @@ def load_parquet_data(s3_parquet_url):
         )
 
 
-s3_parquet_url = st.text_input(
-    "Enter the S3 Parquet file URL:",
-    "s3://staging-raw-data-api/default/overture/2024-05-16-beta.0/argentina/parquet/buildings.geo.parquet",
+parquet_url_query_options = {
+    "Argentina Buildings": "s3://staging-raw-data-api/default/overture/2024-05-16-beta.0/argentina/parquet/buildings.geo.parquet",
+    "Indonesia Buildings": "s3://staging-raw-data-api/default/overture/2024-05-16-beta.0/indonesia/parquet/buildings.geo.parquet",
+    "Liberia Buildings": "s3://staging-raw-data-api/default/overture/2024-05-16-beta.0/liberia/parquet/buildings.geo.parquet",
+    "Nigeria Buildings": "s3://staging-raw-data-api/default/overture/2024-05-16-beta.0/nigeria/parquet/buildings.geo.parquet",
+    "Kenya Buildings": "s3://staging-raw-data-api/default/overture/2024-05-16-beta.0/kenya/parquet/buildings.geo.parquet",
+    "Malawi Buildings": "s3://staging-raw-data-api/default/overture/2024-05-16-beta.0/malawi/parquet/buildings.geo.parquet",
+}
+query_choice_parquet = st.selectbox(
+    "Choose existing parquet files :", options=list(parquet_url_query_options.keys())
 )
+
+s3_parquet_url = st.text_area(
+    "Enter Parquet URL:", parquet_url_query_options[query_choice_parquet]
+)
+
 
 if s3_parquet_url:
     load_parquet_data(s3_parquet_url)
