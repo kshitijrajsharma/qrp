@@ -29,9 +29,12 @@ if s3_parquet_url:
 
     if st.button("Run Query"):
         if query.strip():
-            with st.spinner("Running query..."):
-                df = con.execute(query).df()
-            st.dataframe(df)
+            try:
+                with st.spinner("Running query..."):
+                    df = con.execute(query).df()
+                st.dataframe(df)
+            except Exception as ex:
+                st.error(ex)
         else:
             st.warning("Please enter a valid SQL query.")
 else:
