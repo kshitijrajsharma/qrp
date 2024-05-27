@@ -25,7 +25,46 @@ if s3_parquet_url:
     schema = con.execute("DESCRIBE parquet_data").df()
     st.dataframe(schema)
 
-    query = st.text_area("Enter SQL query:", "SELECT * FROM parquet_data LIMIT 10")
+    query_options = {
+        "Select": "SELECT * FROM parquet_data LIMIT 10",
+        "Get Stats by Dataset": """
+            WITH unnested_data AS (
+                SELECT
+                    unnest(sources).dataset AS dataset,
+                    unnest(sources).confidence AS confidence
+                FROM
+                    parquet_data
+            ),
+            aggregated_data AS (
+                SELECT
+                    dataset,
+                    COUNT(*) AS count
+                FROM
+                    unnested_data
+                GROUP BY
+                    dataset
+            ),
+            total_count AS (
+                SELECT
+                    COUNT(*) AS total
+                FROM
+                    unnested_data
+            )
+            SELECT
+                ad.dataset,
+                ad.count,
+                (ad.count * 100.0 / tc.total) AS percentage
+            FROM
+                aggregated_data ad,
+                total_count tc;
+        """,
+    }
+
+    query_choice = st.selectbox(
+        "Choose a query to run:", options=list(query_options.keys())
+    )
+
+    query = st.text_area("Enter SQL query:", query_options[query_choice])
 
     if st.button("Run Query"):
         if query.strip():
