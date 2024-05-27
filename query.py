@@ -20,6 +20,7 @@ parquet_url_query_options = {
     "Nigeria Buildings": "s3://staging-raw-data-api/default/overture/2024-05-16-beta.0/nigeria/parquet/buildings.geo.parquet",
     "Kenya Buildings": "s3://staging-raw-data-api/default/overture/2024-05-16-beta.0/kenya/parquet/buildings.geo.parquet",
     "Malawi Buildings": "s3://staging-raw-data-api/default/overture/2024-05-16-beta.0/malawi/parquet/buildings.geo.parquet",
+    "Nepal Buildings": "s3://staging-raw-data-api/default/overture/2024-05-16-beta.0/nepal/parquet/buildings.geo.parquet",
 }
 query_choice_parquet = st.selectbox(
     "Choose existing parquet files :", options=list(parquet_url_query_options.keys())
