@@ -2,12 +2,14 @@ import duckdb
 import streamlit as st
 
 con = duckdb.connect()
+con.sql("install spatial")
+con.sql("load spatial")
 
 
 def load_parquet_data(s3_parquet_url):
     with st.spinner("Loading Parquet data..."):
         con.execute(
-            "CREATE OR REPLACE VIEW parquet_data AS SELECT * FROM parquet_scan('{}')".format(
+            "CREATE OR REPLACE VIEW parquet_data AS SELECT * exclude geometry , ST_GeomFromWKB(geometry) as geom ,  FROM parquet_scan('{}')".format(
                 s3_parquet_url
             )
         )
