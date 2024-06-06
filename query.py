@@ -163,7 +163,7 @@ SELECT t1.total_parquet_rows, t2.population, t2.osmBuildingsCount, (t1.total_par
 
     query_options = {
         "Select": "SELECT * FROM parquet_data LIMIT 10",
-        "Get Stats by Dataset": """
+        "Get Stats by Dataset Source": """
             WITH unnested_data AS (
                 SELECT
                     unnest(sources).dataset AS dataset,
