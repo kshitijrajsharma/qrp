@@ -150,7 +150,7 @@ if s3_parquet_url:
                 st.success("Meta Data inserted into poly_stats table.")
                 poly_stats_sql = f"""WITH t1 AS (SELECT COUNT(pg.*) AS total_parquet_rows FROM parquet_data pq),
 t2 AS (SELECT ps.population, ps.osmBuildingsCount FROM poly_stats ps)
-SELECT t1.total_parquet_rows, t2.population, t2.osmBuildingsCount, (t1.total_parquet_rows / t2.population) AS people_per_building FROM t1, t2;"""
+SELECT t1.total_parquet_rows, t2.population, t2.osmBuildingsCount, (t2.population/t1.total_parquet_rows) AS people_per_building FROM t1, t2;"""
                 try:
                     with st.spinner("Fetching bbox meta stats..."):
                         df = con.execute(poly_stats_sql).df()
