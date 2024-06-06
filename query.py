@@ -13,43 +13,53 @@ con.sql("load spatial")
 def load_parquet_data(s3_parquet_url):
     with st.spinner("Loading Parquet data..."):
         con.execute(
-            "CREATE OR REPLACE VIEW parquet_data AS SELECT * exclude geometry , ST_GeomFromWKB(geometry) as geom ,  FROM parquet_scan('{}')".format(
+            "CREATE OR REPLACE VIEW parquet_data AS SELECT * exclude geometry , ST_GeomFromWKB(geometry) as geom FROM parquet_scan('{}')".format(
                 s3_parquet_url
             )
         )
 
 
-parquet_url_query_options = {
-    "Argentina Buildings": "s3://staging-raw-data-api/default/overture/2024-05-16-beta.0/argentina/parquet/buildings.geo.parquet",
-    "Indonesia Buildings": "s3://staging-raw-data-api/default/overture/2024-05-16-beta.0/indonesia/parquet/buildings.geo.parquet",
-    "Liberia Buildings": "s3://staging-raw-data-api/default/overture/2024-05-16-beta.0/liberia/parquet/buildings.geo.parquet",
-    "Nigeria Buildings": "s3://staging-raw-data-api/default/overture/2024-05-16-beta.0/nigeria/parquet/buildings.geo.parquet",
-    "Kenya Buildings": "s3://staging-raw-data-api/default/overture/2024-05-16-beta.0/kenya/parquet/buildings.geo.parquet",
-    "Malawi Buildings": "s3://staging-raw-data-api/default/overture/2024-05-16-beta.0/malawi/parquet/buildings.geo.parquet",
-    "Nepal Buildings": "s3://staging-raw-data-api/default/overture/2024-05-16-beta.0/nepal/parquet/buildings.geo.parquet",
-}
+base_url = "s3://staging-raw-data-api/default/overture/2024-05-16-beta.0"
+
+countries = ["Argentina", "Indonesia", "Kenya", "Liberia", "Malawi", "Nepal", "Nigeria"]
+
+datasets = [
+    "buildings",
+    "boundary",
+    "land_cover",
+    "land_use",
+    "land",
+    "placenames",
+    "places",
+    "roads",
+    "water",
+]
 
 country_bboxes = {
-    "Argentina Buildings": "-73.42,-55.25,-53.63,-21.83",
-    "Indonesia Buildings": "95.29,-10.36,141.03,5.48",
-    "Liberia Buildings": "-11.44,4.36,-7.54,8.54",
-    "Nigeria Buildings": "2.69,4.24,14.58,13.87",
-    "Kenya Buildings": "33.89,-4.68,41.86,5.51",
-    "Malawi Buildings": "32.69,-16.8,35.77,-9.23",
-    "Nepal Buildings": "79.991455,26.372185,88.220215,30.477083",
+    "Argentina": "-73.419999,-55.224869000000005,-53.630001,-21.8306177",
+    "Indonesia": "107.386571,-4.548558,119.5970811,7.3722212",
+    "Kenya": "33.890677499999995,-4.6681352,41.8597969,5.503299",
+    "Liberia": "-11.423899,4.3663899,-7.5426210000000005,8.533899",
+    "Malawi": "32.700001,-16.766699,35.769999000000006,-9.2333343",
+    "Nepal": "79.9927788,26.3721864,88.219999,30.4708008",
+    "Nigeria": "2.6925510000000004,4.240001,14.5758323,13.866651000000001",
 }
 
-query_choice_parquet = st.selectbox(
-    "Choose existing parquet files :", options=list(parquet_url_query_options.keys())
-)
-s3_parquet_url = st.text_area(
-    "Enter Parquet URL:", parquet_url_query_options[query_choice_parquet]
-)
+country_choice = st.selectbox("Choose a country:", options=countries)
 
-bbox_input = st.text_input(
-    "Enter Bounding Box (e.g., 'minx,miny,maxx,maxy'):",
-    value=country_bboxes.get(query_choice_parquet, ""),
+viewer_url = f"https://kshitijrajsharma.github.io/overture-to-tiles/?url=https%3A%2F%2Fstaging-raw-data-api.s3.amazonaws.com%2Fdefault%2Foverture%2F2024-05-16-beta.0%2F{country_choice.lower()}%2Fpmtiles"
+
+st.markdown(f"[Load this Area in viewer]({viewer_url})", unsafe_allow_html=True)
+dataset_choice = st.selectbox("Choose a dataset:", options=datasets)
+
+s3_parquet_url = (
+    f"{base_url}/{country_choice.lower()}/parquet/{dataset_choice}.geo.parquet"
 )
+bbox_input = country_bboxes[country_choice]
+
+st.text_area("Parquet URL:", s3_parquet_url)
+st.text_input("Bounding Box (e.g., 'minx,miny,maxx,maxy'):", value=bbox_input)
+
 if s3_parquet_url:
     load_parquet_data(s3_parquet_url)
     st.write("Remote Table:")
@@ -84,7 +94,10 @@ if s3_parquet_url:
 
                 for _ in range(max_retries):
                     try:
-                        response = requests.post(url, data=geom_dump, headers=headers)
+                        with st.spinner("Calling bbox meta stats API..."):
+                            response = requests.post(
+                                url, data=geom_dump, headers=headers
+                            )
                         response.raise_for_status()
                         return response.json()
                     except requests.exceptions.RequestException as e:
@@ -96,7 +109,15 @@ if s3_parquet_url:
 
             data = fetch_data(geometry)
             if data:
-                st.write(data["raw"])
+                refined_data = {
+                    "population": data["raw"]["population"],
+                    "populatedAreaKm2": data["raw"]["populatedAreaKm2"],
+                    "osmBuildingsCount": data["raw"]["osmBuildingsCount"],
+                    "osmHighwayLengthKm": data["raw"]["osmHighwayLengthKm"],
+                    "buildingCount6Months": data["raw"]["buildingCount6Months"],
+                    "highwayLength6MonthsKm": data["raw"]["highwayLength6MonthsKm"],
+                }
+                st.json(refined_data)
                 con.execute(
                     """
                     CREATE TABLE IF NOT EXISTS poly_stats (
@@ -127,11 +148,11 @@ if s3_parquet_url:
                 )
 
                 st.success("Meta Data inserted into poly_stats table.")
-                poly_stats_sql = f"""with t1 as ( select count(pg.*) as total_parquet_rows from parquet_data pq ),
-t2 as ( select ps.population , ps.osmBuildingsCount,  from poly_stats ps )
-select t1.total_parquet_rows , t2.population, t2.osmBuildingsCount, (t1.total_parquet_rows /t2.population) as people_per_building from t1,t2;"""
+                poly_stats_sql = f"""WITH t1 AS (SELECT COUNT(pg.*) AS total_parquet_rows FROM parquet_data pq),
+t2 AS (SELECT ps.population, ps.osmBuildingsCount FROM poly_stats ps)
+SELECT t1.total_parquet_rows, t2.population, t2.osmBuildingsCount, (t1.total_parquet_rows / t2.population) AS people_per_building FROM t1, t2;"""
                 try:
-                    with st.spinner("Running query..."):
+                    with st.spinner("Fetching bbox meta stats..."):
                         df = con.execute(poly_stats_sql).df()
                     st.dataframe(df)
                 except Exception as ex:
