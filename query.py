@@ -1,4 +1,5 @@
 import json
+import os
 
 import duckdb
 import requests
@@ -28,6 +29,16 @@ parquet_url_query_options = {
     "Nepal Buildings": "s3://staging-raw-data-api/default/overture/2024-05-16-beta.0/nepal/parquet/buildings.geo.parquet",
 }
 
+country_bboxes = {
+    "Argentina Buildings": "-73.42,-55.25,-53.63,-21.83",
+    "Indonesia Buildings": "95.29,-10.36,141.03,5.48",
+    "Liberia Buildings": "-11.44,4.36,-7.54,8.54",
+    "Nigeria Buildings": "2.69,4.24,14.58,13.87",
+    "Kenya Buildings": "33.89,-4.68,41.86,5.51",
+    "Malawi Buildings": "32.69,-16.8,35.77,-9.23",
+    "Nepal Buildings": "79.991455,26.372185,88.220215,30.477083",
+}
+
 query_choice_parquet = st.selectbox(
     "Choose existing parquet files :", options=list(parquet_url_query_options.keys())
 )
@@ -35,9 +46,10 @@ s3_parquet_url = st.text_area(
     "Enter Parquet URL:", parquet_url_query_options[query_choice_parquet]
 )
 
-
-bbox_input = st.text_input("Enter Bounding Box (e.g., 'minx,miny,maxx,maxy'):", "")
-
+bbox_input = st.text_input(
+    "Enter Bounding Box (e.g., 'minx,miny,maxx,maxy'):",
+    value=country_bboxes.get(query_choice_parquet, ""),
+)
 if s3_parquet_url:
     load_parquet_data(s3_parquet_url)
     st.write("Remote Table:")
@@ -66,6 +78,8 @@ if s3_parquet_url:
                 max_retries=2,
             ):
                 headers = {"Content-Type": "application/json"}
+                if os.getenv("ACCESS-TOKEN"):
+                    headers["access-token"] = os.getenv("ACCESS-TOKEN")
                 geom_dump = json.dumps({"geometry": geometry})
 
                 for _ in range(max_retries):
@@ -112,7 +126,16 @@ if s3_parquet_url:
                     )
                 )
 
-                st.success("Data inserted into poly_stats table.")
+                st.success("Meta Data inserted into poly_stats table.")
+                poly_stats_sql = f"""with t1 as ( select count(pg.*) as total_parquet_rows from parquet_data pq ),
+t2 as ( select ps.population , ps.osmBuildingsCount,  from poly_stats ps )
+select t1.total_parquet_rows , t2.population, t2.osmBuildingsCount, (t1.total_parquet_rows /t2.population) as people_per_building from t1,t2;"""
+                try:
+                    with st.spinner("Running query..."):
+                        df = con.execute(poly_stats_sql).df()
+                    st.dataframe(df)
+                except Exception as ex:
+                    st.error(ex)
 
         except ValueError:
             st.error("Invalid bounding box format. Please enter 'minx,miny,maxx,maxy'.")
