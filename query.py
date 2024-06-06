@@ -78,8 +78,8 @@ if s3_parquet_url:
                 max_retries=2,
             ):
                 headers = {"Content-Type": "application/json"}
-                if os.getenv("ACCESS-TOKEN"):
-                    headers["access-token"] = os.getenv("ACCESS-TOKEN")
+                if os.getenv("Token"):
+                    headers["access-token"] = os.getenv("Token")
                 geom_dump = json.dumps({"geometry": geometry})
 
                 for _ in range(max_retries):
