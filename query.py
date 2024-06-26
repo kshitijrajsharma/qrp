@@ -47,7 +47,7 @@ country_bboxes = {
 
 country_choice = st.selectbox("Choose a country:", options=countries)
 
-viewer_url = f"https://kshitijrajsharma.github.io/overture-to-tiles/?url=https%3A%2F%2Fstaging-raw-data-api.s3.amazonaws.com%2Fdefault%2Foverture%2F2024-05-16-beta.0%2F{country_choice.lower()}%2Fpmtiles"
+viewer_url = f"https://hotosm.github.io/overture-to-tiles/?url=https%3A%2F%2Fstaging-raw-data-api.s3.amazonaws.com%2Fdefault%2Foverture%2F2024-05-16-beta.0%2F{country_choice.lower()}%2Fpmtiles"
 
 st.markdown(f"[Load this Area in viewer]({viewer_url})", unsafe_allow_html=True)
 dataset_choice = st.selectbox("Choose a dataset:", options=datasets)
